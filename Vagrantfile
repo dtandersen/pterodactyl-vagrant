@@ -6,7 +6,8 @@ Vagrant.configure("2") do |config|
   config.ssh.forward_agent = true
   # config.vm.box_check_update = false
 
-  config.vm.network "forwarded_port", guest: 443, host: 443
+  #config.vm.network "forwarded_port", guest: 443, host: 443
+  config.vm.network "forwarded_port", guest: 80, host: 80
 
   # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
 
@@ -16,13 +17,13 @@ Vagrant.configure("2") do |config|
 
   # config.vm.synced_folder "../data", "/vagrant_data"
 
-  # config.vm.provider "virtualbox" do |vb|
+  config.vm.provider "virtualbox" do |vb|
   #   # Display the VirtualBox GUI when booting the machine
   #   vb.gui = true
   #
-  #   # Customize the amount of memory on the VM:
-  #   vb.memory = "1024"
-  # end
+    vb.memory = 4096
+    vb.cpus = 2
+  end
 
   config.vm.provision "shell", inline: <<-SHELL
       ## Install Repos
@@ -71,21 +72,14 @@ Vagrant.configure("2") do |config|
     systemctl stop nginx
 
     #Get our Cert
-    sudo certbot certonly --non-interactive --agree-tos --email test@example.com --standalone --preferred-challenges http -d panel.example.com
+    #sudo certbot certonly --non-interactive --agree-tos --email test@example.com --standalone --preferred-challenges http -d panel.example.com
 
     #The cert should be now located under /etc/letsencrypt/live/panel.example.com/cert.pem
     cp /vagrant/nginx.conf /etc/nginx/conf.d/pterodactyl.conf
     sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
     setenforce 0
-    mkdir -p /etc/letsencrypt/live/localhost
-    openssl req -x509 -out /etc/letsencrypt/live/localhost/fullchain.pem -keyout /etc/letsencrypt/live/localhost/privkey.pem \
-      -newkey rsa:2048 -nodes -sha256 \
-      -subj '/CN=localhost' -extensions EXT -config <( \
-      printf "[dn]\nCN=localhost\n[req]\ndistinguished_name = dn\n[EXT]\nsubjectAltName=DNS:localhost\nkeyUsage=digitalSignature\nextendedKeyUsage=serverAuth")
     systemctl enable nginx
     systemctl start nginx
-    exit
-    #mysql_secure_installation
     export DATABASE_PASS=changeme
     mysqladmin -u root password "$DATABASE_PASS"
     mysql -u root -p"$DATABASE_PASS" -e "UPDATE mysql.user SET Password=PASSWORD('$DATABASE_PASS') WHERE User='root'"
@@ -154,5 +148,6 @@ Vagrant.configure("2") do |config|
     systemctl daemon-reload
     systemctl enable wings
     systemctl start wings
+    cp /vagrant/ptero /etc/cron.d
   SHELL
 end
