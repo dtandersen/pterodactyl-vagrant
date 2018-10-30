@@ -30,30 +30,29 @@ Vagrant.configure("2") do |config|
   config.vm.provision "shell", inline: <<-SHELL
       ## Install Repos
     yum install -y epel-release https://centos7.iuscommunity.org/ius-release.rpm
-
-    ## Get yum updates
-    yum update -y
-
-    ## Install PHP 7.2
-    yum install -y nano
-    yum install -y php72u-php php72u-common php72u-fpm php72u-cli php72u-json php72u-mysqlnd php72u-mcrypt php72u-gd php72u-mbstring php72u-pdo php72u-zip php72u-bcmath php72u-dom php72u-opcache
-
-    ## Install Repos
+    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
     cp /vagrant/mariadb.repo /etc/yum.repos.d/mariadb.repo
 
     ## Get yum updates
-    yum update -y
+    yum update --exclude=kernel*
 
-    ## Install MariaDB 10.2
-    yum install -y MariaDB-common MariaDB-server
+    ## Install PHP 7.2
+    yum install -y nano nginx \
+      firewalld \
+      redis40u \
+      certbot \
+      php72u-common php72u-fpm php72u-cli php72u-json php72u-mysqlnd php72u-gd php72u-mbstring php72u-pdo php72u-zip php72u-bcmath php72u-dom php72u-opcache \
+      MariaDB-common MariaDB-server \
+      yum-utils device-mapper-persistent-data lvm2 \
+      docker-ce \
+      tar unzip make gcc gcc-c++ python \
+      nodejs \
+      --exclude=kernel*
 
     ## Start maraidb
     systemctl start mariadb
     systemctl enable mariadb
 
-    yum install -y nginx
-
-    yum install -y firewalld
     systemctl start firewalld
     systemctl enable firewalld
     firewall-cmd --add-service=http --permanent
@@ -61,16 +60,11 @@ Vagrant.configure("2") do |config|
     firewall-cmd --add-service=http
     firewall-cmd --add-service=https
 
-    yum install -y redis40u
-
     systemctl start redis
     systemctl enable redis
 
     curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
-    yum -y install certbot
-
-    #Stop NGINX if its running
     systemctl stop nginx
 
     #Get our Cert
@@ -126,17 +120,8 @@ Vagrant.configure("2") do |config|
     sudo systemctl enable pteroq.service
     sudo systemctl start pteroq
 
-    yum install -y yum-utils device-mapper-persistent-data lvm2
-
-    yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-
-    yum install -y docker-ce
-
     systemctl enable docker
     systemctl start docker
-    curl --silent --location https://rpm.nodesource.com/setup_8.x | bash -
-    yum install -y tar unzip make gcc gcc-c++ python
-    yum install -y nodejs
     firewall-cmd --add-port 8080/tcp --permanent
     firewall-cmd --add-port 2022/tcp --permanent
     firewall-cmd --permanent --zone=trusted --change-interface=docker0
