@@ -28,16 +28,17 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<-SHELL
+    # who needs security}
+    sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
+    setenforce 0
+
     yum install -y epel-release https://centos7.iuscommunity.org/ius-release.rpm
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
 
-    ## Get yum updates
     yum update -y -q
 
-    ## Install PHP 7.2
     yum install -y -q nano nginx \
       firewalld \
-      redis40u \
       certbot \
       php72u-common php72u-fpm php72u-cli php72u-json php72u-mysqlnd php72u-gd php72u-mbstring php72u-pdo php72u-zip php72u-bcmath php72u-dom php72u-opcache \
       yum-utils device-mapper-persistent-data lvm2 \
@@ -48,16 +49,22 @@ Vagrant.configure("2") do |config|
     systemctl enable docker
     systemctl start docker
 
-    docker run -d \
-      --restart unless-stopped \
+    docker run --name mariadb \
+      -d --restart unless-stopped \
       -e MYSQL_ROOT_PASSWORD=changeme \
       -e MYSQL_DATABASE=panel \
       -e MYSQL_USER=pterodactyl \
       -e MYSQL_PASSWORD=bird \
       -v /var/lib/mysql:/var/lib/mysql \
       -p 3306:3306 \
-      --name mariadb \
       mariadb
+
+    docker run --name redis \
+      -d --restart unless-stopped \
+      -v /var/lib/redis:/data \
+      -p 6379:6379 \
+      redis \
+      redis-server --appendonly yes
 
     systemctl start firewalld
     systemctl enable firewalld
@@ -66,20 +73,13 @@ Vagrant.configure("2") do |config|
     firewall-cmd --add-service=http
     firewall-cmd --add-service=https
 
-    systemctl start redis
-    systemctl enable redis
-
-    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+    curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/bin --filename=composer
 
     systemctl stop nginx
 
-    #Get our Cert
-    #sudo certbot certonly --non-interactive --agree-tos --email test@example.com --standalone --preferred-challenges http -d panel.example.com
+    #certbot certonly --non-interactive --agree-tos --email test@example.com --standalone --preferred-challenges http -d panel.example.com
 
-    #The cert should be now located under /etc/letsencrypt/live/panel.example.com/cert.pem
     cp /vagrant/nginx.conf /etc/nginx/conf.d/pterodactyl.conf
-    sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
-    setenforce 0
     systemctl enable nginx
     systemctl start nginx
 
@@ -93,12 +93,12 @@ Vagrant.configure("2") do |config|
     mkdir -p /var/www/pterodactyl
     cd /var/www/pterodactyl
 
-    curl -Lo panel.tar.gz https://github.com/Pterodactyl/Panel/releases/download/v0.7.10/panel.tar.gz
+    curl -Lso panel.tar.gz https://github.com/Pterodactyl/Panel/releases/download/v0.7.10/panel.tar.gz
     tar --strip-components=1 -xzvf panel.tar.gz
     chmod -R 755 storage/* bootstrap/cache
 
     cp .env.example .env
-    /usr/local/bin/composer install --no-dev --optimize-autoloader
+    composer install -q --no-dev --optimize-autoloader
 
     php artisan key:generate --force
     php artisan p:environment:setup --author=test@example.com --url=http://localhost --timezone=America/Los_Angeles --cache=redis --session=redis --queue=redis --disable-settings-ui --redis-host=localhost --redis-pass= --redis-port=6379
