@@ -107,12 +107,12 @@ Vagrant.configure("2") do |config|
     chmod -R 755 storage/* bootstrap/cache
 
     cp .env.example .env
-    /usr/local/bin/composer install --no-dev
+    /usr/local/bin/composer install --no-dev --optimize-autoloader
 
     php artisan key:generate --force
     php artisan p:environment:setup --author=test@example.com --url=http://localhost --timezone=America/Los_Angeles --cache=redis --session=redis --queue=redis --disable-settings-ui --redis-host=localhost --redis-pass= --redis-port=6379
     php artisan p:environment:database --host=127.0.0.1 --port=3306 --database=panel --username=pterodactyl --password=bird
-    php artisan p:environment:mail --driver=smtp --host=localhost --port=2525 -n
+    php artisan p:environment:mail --driver=smtp --host=localhost --port=2525 -n --encryption=
     php artisan migrate --no-interaction --force
     php artisan db:seed -n --force
     php artisan p:user:make --admin=1  --email=test@example.com --username=admin  --password=test --name-first=admin --name-last=user
