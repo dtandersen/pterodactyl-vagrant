@@ -8,6 +8,8 @@ Vagrant.configure("2") do |config|
 
   #config.vm.network "forwarded_port", guest: 443, host: 443
   config.vm.network "forwarded_port", guest: 80, host: 80
+  config.vm.network "forwarded_port", guest: 8080, host: 8080
+  config.vm.network "forwarded_port", guest: 5555, host: 5555 # the game
 
   # config.vm.network "forwarded_port", guest: 80, host: 8080, host_ip: "127.0.0.1"
 
@@ -141,7 +143,7 @@ Vagrant.configure("2") do |config|
     firewall-cmd --reload
     mkdir -p /srv/daemon /srv/daemon-data
     cd /srv/daemon
-    curl -Lo daemon.tar.gz https://github.com/Pterodactyl/Daemon/releases/download/v0.5.6/daemon.tar.gz
+    curl -Lo daemon.tar.gz https://github.com/Pterodactyl/Daemon/releases/download/v0.6.7/daemon.tar.gz
     tar --strip-components=1 -xzvf daemon.tar.gz
     npm install --only=production
     cp /vagrant/wings.service /etc/systemd/system/wings.service
