@@ -28,30 +28,36 @@ Vagrant.configure("2") do |config|
   end
 
   config.vm.provision "shell", inline: <<-SHELL
-      ## Install Repos
     yum install -y epel-release https://centos7.iuscommunity.org/ius-release.rpm
     yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
-    cp /vagrant/mariadb.repo /etc/yum.repos.d/mariadb.repo
 
     ## Get yum updates
-    yum update --exclude=kernel*
+    yum update -y -q
 
     ## Install PHP 7.2
-    yum install -y nano nginx \
+    yum install -y -q nano nginx \
       firewalld \
       redis40u \
       certbot \
       php72u-common php72u-fpm php72u-cli php72u-json php72u-mysqlnd php72u-gd php72u-mbstring php72u-pdo php72u-zip php72u-bcmath php72u-dom php72u-opcache \
-      MariaDB-common MariaDB-server \
       yum-utils device-mapper-persistent-data lvm2 \
       docker-ce \
       tar unzip make gcc gcc-c++ python \
-      nodejs \
-      --exclude=kernel*
+      nodejs
 
-    ## Start maraidb
-    systemctl start mariadb
-    systemctl enable mariadb
+    systemctl enable docker
+    systemctl start docker
+
+    docker run -d \
+      --restart unless-stopped \
+      -e MYSQL_ROOT_PASSWORD=changeme \
+      -e MYSQL_DATABASE=panel \
+      -e MYSQL_USER=pterodactyl \
+      -e MYSQL_PASSWORD=bird \
+      -v /var/lib/mysql:/var/lib/mysql \
+      -p 3306:3306 \
+      --name mariadb \
+      mariadb
 
     systemctl start firewalld
     systemctl enable firewalld
@@ -76,17 +82,6 @@ Vagrant.configure("2") do |config|
     setenforce 0
     systemctl enable nginx
     systemctl start nginx
-    export DATABASE_PASS=changeme
-    mysqladmin -u root password "$DATABASE_PASS"
-    mysql -u root -p"$DATABASE_PASS" -e "UPDATE mysql.user SET Password=PASSWORD('$DATABASE_PASS') WHERE User='root'"
-    mysql -u root -p"$DATABASE_PASS" -e "DELETE FROM mysql.user WHERE User='root' AND Host NOT IN ('localhost', '127.0.0.1', '::1')"
-    mysql -u root -p"$DATABASE_PASS" -e "DELETE FROM mysql.user WHERE User=''"
-    mysql -u root -p"$DATABASE_PASS" -e "DELETE FROM mysql.db WHERE Db='test' OR Db='test\_%'"
-    mysql -u root -p"$DATABASE_PASS" -e "FLUSH PRIVILEGES"
-    mysql -u root -p"$DATABASE_PASS" -e "CREATE DATABASE panel /*\!40100 DEFAULT CHARACTER SET utf8 */;"
-    mysql -u root -p"$DATABASE_PASS" -e "CREATE USER pterodactyl@'127.0.0.1' IDENTIFIED BY 'bird';"
-    mysql -u root -p"$DATABASE_PASS" -e "GRANT ALL PRIVILEGES ON panel.* TO 'pterodactyl'@'127.0.0.1';"
-    mysql -u root -p"$DATABASE_PASS" -e "FLUSH PRIVILEGES;"
 
     cp /vagrant/www-pterodactyl.conf /etc/php-fpm.d/www-pterodactyl.conf
     systemctl enable php-fpm
@@ -120,8 +115,6 @@ Vagrant.configure("2") do |config|
     sudo systemctl enable pteroq.service
     sudo systemctl start pteroq
 
-    systemctl enable docker
-    systemctl start docker
     firewall-cmd --add-port 8080/tcp --permanent
     firewall-cmd --add-port 2022/tcp --permanent
     firewall-cmd --permanent --zone=trusted --change-interface=docker0
