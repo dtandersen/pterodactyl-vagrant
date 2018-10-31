@@ -87,9 +87,6 @@ Vagrant.configure("2") do |config|
     systemctl enable php-fpm
     systemctl start php-fpm
 
-    systemctl start redis
-    systemctl enable redis
-
     mkdir -p /var/www/pterodactyl
     cd /var/www/pterodactyl
 
